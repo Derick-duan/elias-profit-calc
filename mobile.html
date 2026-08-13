@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0f13">
 <title>💰 买手利润换算器</title>
-<meta name="app-version" content="3">
+<meta name="app-version" content="4">
 <style>
   :root {
     --bg: #0f0f13;
@@ -170,6 +170,29 @@
   .ship-mode .opt.active { color: var(--text); border-color: var(--accent); background: #241510; }
   .ship-mode .opt small { display: block; font-size: 10px; margin-top: 2px; }
 
+  /* 平台费开关 */
+  .fee-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; margin-top: 10px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .fee-row:hover { border-color: var(--accent); }
+  .fee-label { font-size: 13px; font-weight: 600; }
+  .fee-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  .toggle {
+    width: 44px; height: 26px; border-radius: 13px;
+    background: var(--accent); position: relative;
+    transition: background 0.2s; flex-shrink: 0;
+  }
+  .toggle .knob {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; position: absolute; top: 2px; left: 20px;
+    transition: left 0.2s;
+  }
+  .toggle.off { background: #3a3a48; }
+  .toggle.off .knob { left: 2px; }
+
   /* Summary */
   .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .sum-box { background: var(--card2); border-radius: 12px; padding: 14px; text-align: center; }
@@ -330,6 +353,13 @@
       <div class="opt active" data-mode="per" onclick="setShipMode('per')">每件单独运费<small>多件 = 18×件数</small></div>
       <div class="opt" data-mode="once" onclick="setShipMode('once')">整单合并运费<small>多件合并一个包裹</small></div>
     </div>
+    <div class="fee-row" id="feeRow" onclick="toggleFee()">
+      <div>
+        <div class="fee-label">平台费（走平台收 1.6%）</div>
+        <div class="fee-sub" id="feeSub">已开启 · 每笔按成交价 × 1.6% 扣</div>
+      </div>
+      <div class="toggle" id="feeToggle"><div class="knob"></div></div>
+    </div>
     <div class="item-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
       <div class="field">
         <label>运费（¥）</label>
@@ -421,6 +451,7 @@ const MIN_PROFIT = 20;    // 保底利润 ¥20
 
 let selectedBrand = "LAFREEDOM";
 let shipMode = "per";     // per=每件单独运费 once=整单合并
+let feeEnabled = true;    // 平台费开关（走平台收 1.6%，私聊不走平台关掉）
 let itemCount = 0;
 
 // ---------- 元素 ----------
@@ -533,6 +564,17 @@ function syncRates() {
   recalc();
 }
 
+// 平台费开关
+function toggleFee() {
+  feeEnabled = !feeEnabled;
+  const t = $('feeToggle');
+  t.classList.toggle('off', !feeEnabled);
+  $('feeSub').textContent = feeEnabled
+    ? '已开启 · 每笔按成交价 × 1.6% 扣'
+    : '已关闭 · 不走平台，无平台费';
+  recalc();
+}
+
 // ---------- 计算 ----------
 function recalc() {
   const costRate = (parseFloat($('costRateInput').value) || 0) / 10;
@@ -540,6 +582,7 @@ function recalc() {
   const vipRate = parseFloat($('vipRateInput').value) || 0.9;
   const svipRate = 0.8;
   const shipDefault = parseFloat($('shippingInput').value) || 0;
+  const feeRate = feeEnabled ? FEE_RATE : 0;   // 平台费开关
 
   const items = [...document.querySelectorAll('.item')];
   const rows = [];
@@ -564,9 +607,9 @@ function recalc() {
     const useDeal = dealInput.value !== '';
     const dealPrice = useDeal ? (parseFloat(dealInput.value) || 0) : recommended;
 
-    const profitRec = dealPrice * qty - cost - ship - dealPrice * qty * FEE_RATE;
-    const profit90 = fan90 * qty - cost - ship - fan90 * qty * FEE_RATE;
-    const profit80 = fan80 * qty - cost - ship - fan80 * qty * FEE_RATE;
+    const profitRec = dealPrice * qty - cost - ship - dealPrice * qty * feeRate;
+    const profit90 = fan90 * qty - cost - ship - fan90 * qty * feeRate;
+    const profit80 = fan80 * qty - cost - ship - fan80 * qty * feeRate;
 
     rows.push({
       name: el.querySelector('.item-name').value || `商品${idx + 1}`,
@@ -603,10 +646,10 @@ function recalc() {
     ? shipDefault
     : rows.reduce((s, r) => s + r.ship, 0);
   const totalDeal = rows.reduce((s, r) => s + r.dealPrice * r.qty, 0);
-  const totalFee = totalDeal * FEE_RATE;
+  const totalFee = totalDeal * feeRate;
   const totalProfit = totalDeal - totalCost - totalShip - totalFee;
-  const totalVipProfit = totalVip - totalCost - totalShip - totalVip * FEE_RATE;
-  const totalSvipProfit = totalSvip - totalCost - totalShip - totalSvip * FEE_RATE;
+  const totalVipProfit = totalVip - totalCost - totalShip - totalVip * feeRate;
+  const totalSvipProfit = totalSvip - totalCost - totalShip - totalSvip * feeRate;
   const margin = totalDeal > 0 ? (totalProfit / totalDeal * 100) : 0;
   const totalQty = rows.reduce((s, r) => s + r.qty, 0);
 
@@ -618,7 +661,9 @@ function recalc() {
   $('sumQty').textContent = `${totalQty} 件`;
   $('sumSkuCount').textContent = rows.length;
   $('sumProfit').textContent = fmtMoney(totalProfit);
-  $('sumProfitDetail').textContent = `成交 ${fmtMoney(totalDeal)} - 成本 ${fmtMoney(totalCost)} - 运费 ${fmtMoney(totalShip)} - 平台费 ¥${totalFee.toFixed(1)}`;
+  $('sumProfitDetail').textContent = feeEnabled
+    ? `成交 ${fmtMoney(totalDeal)} - 成本 ${fmtMoney(totalCost)} - 运费 ${fmtMoney(totalShip)} - 平台费 ¥${totalFee.toFixed(1)}`
+    : `成交 ${fmtMoney(totalDeal)} - 成本 ${fmtMoney(totalCost)} - 运费 ${fmtMoney(totalShip)}（免平台费）`;
   $('sumProfit').className = 'val num ' + (totalProfit >= 20 ? 'green' : 'red');
   $('sumMargin').textContent = margin.toFixed(1) + '%';
 
@@ -729,6 +774,7 @@ function saveState() {
   const state = {
     brand: selectedBrand,
     shipMode,
+    feeEnabled,
     ship: $('shippingInput').value,
     cost: $('costRateInput').value,
     rec: $('recRateInput').value,
@@ -751,6 +797,11 @@ function loadState() {
     if (!s) return false;
     selectedBrand = s.brand || 'LAFREEDOM';
     shipMode = s.shipMode || 'per';
+    feeEnabled = s.feeEnabled !== undefined ? s.feeEnabled : true;
+    $('feeToggle').classList.toggle('off', !feeEnabled);
+    $('feeSub').textContent = feeEnabled
+      ? '已开启 · 每笔按成交价 × 1.6% 扣'
+      : '已关闭 · 不走平台，无平台费';
     $('shippingInput').value = s.ship ?? '18';
     $('costRateInput').value = s.cost ?? '6.1';
     $('recRateInput').value = s.rec ?? '7.5';
