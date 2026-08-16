@@ -667,14 +667,14 @@ function recalc() {
 
   // 汇总
   const totalRec = rows.reduce((s, r) => s + r.recommended * r.qty, 0);
-  // VIP/SVIP 总售价 = 总售价 × 折率（与用户预期口径一致：510×0.9=459）
-  const totalVip = Math.round(totalDeal * vipRate);
-  const totalSvip = Math.round(totalDeal * 0.8);
   const totalCost = rows.reduce((s, r) => s + r.cost, 0);
   const totalShip = shipMode === 'once'
     ? shipDefault
     : rows.reduce((s, r) => s + r.ship, 0);
   const totalDeal = rows.reduce((s, r) => s + r.dealPrice * r.qty, 0);
+  // VIP/SVIP 总售价 = 总售价 × 折率（与用户预期口径一致：510×0.9=459）
+  const totalVip = Math.round(totalDeal * vipRate);
+  const totalSvip = Math.round(totalDeal * 0.8);
   const totalFee = totalDeal * feeRate;
   const totalProfit = totalDeal - totalCost - totalShip - totalFee;
   const totalVipProfit = totalVip - totalCost - totalShip - totalVip * feeRate;
