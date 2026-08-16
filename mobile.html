@@ -410,7 +410,7 @@
     </div>
     <div class="summary">
       <div class="sum-box">
-        <div class="lbl">总利润（推荐价）</div>
+        <div class="lbl">总利润（成交价）</div>
         <div class="val green" id="sumProfit">¥0</div>
         <div class="sub" id="sumProfitDetail"></div>
       </div>
@@ -625,11 +625,12 @@ function recalc() {
     const rRate = rowRecRate > 0 ? rowRecRate / 10 : recRate;
 
     const cost = retail * cRate * qty;
-    const recommended = Math.round(retail * rRate);
-    const fan90 = Math.round(recommended * vipRate);
-    const fan80 = Math.round(recommended * 0.8);
+    const recommended = Math.round(retail * rRate);   // 单件推荐价
     const useDeal = dealInput.value !== '';
     const dealPrice = useDeal ? (parseFloat(dealInput.value) || 0) : recommended;
+    // VIP/SVIP：基于实际成交价（没填成交价时=推荐价），与总售价口径一致
+    const fan90 = Math.round(dealPrice * vipRate);
+    const fan80 = Math.round(dealPrice * 0.8);
 
     const profitRec = dealPrice * qty - cost - ship - dealPrice * qty * feeRate;
     const profit90 = fan90 * qty - cost - ship - fan90 * qty * feeRate;
@@ -666,8 +667,9 @@ function recalc() {
 
   // 汇总
   const totalRec = rows.reduce((s, r) => s + r.recommended * r.qty, 0);
-  const totalVip = rows.reduce((s, r) => s + r.fan90 * r.qty, 0);
-  const totalSvip = rows.reduce((s, r) => s + r.fan80 * r.qty, 0);
+  // VIP/SVIP 总售价 = 总售价 × 折率（与用户预期口径一致：510×0.9=459）
+  const totalVip = Math.round(totalDeal * vipRate);
+  const totalSvip = Math.round(totalDeal * 0.8);
   const totalCost = rows.reduce((s, r) => s + r.cost, 0);
   const totalShip = shipMode === 'once'
     ? shipDefault
