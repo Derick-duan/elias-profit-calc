@@ -647,13 +647,13 @@ function recalc() {
       minProfitOk: profitPerUnit >= MIN_PROFIT
     });
 
-    // 行结果（单价 + 件数标注 + 整件利润）
+    // 行结果（售价 = 成交价优先，没填用推荐价；件数标注 + 单件利润）
     const r = el.querySelector(`#${el.id}-result`);
     const pClass = p => p >= 20 ? 'profit-pos' : 'profit-neg';
     const warn = profitPerUnit < MIN_PROFIT ? `<span class="r"><span class="v warn">⚠️ 单件低于保底¥20</span></span>` : '';
     const qtyTag = qty > 1 ? `<small style="display:block;color:#55555f;font-size:10px">×${qty}件</small>` : '';
     r.innerHTML = `
-      <div class="r">推荐价<span class="v">¥${recommended}</span>${qtyTag}</div>
+      <div class="r">售价<span class="v">¥${dealPrice}</span>${qtyTag}</div>
       <div class="r">VIP价<span class="v">¥${fan90}</span></div>
       <div class="r">SVIP价<span class="v">¥${fan80}</span></div>
       <div class="r">${qty > 1 ? `利润(${qty}件)` : '利润'}${useDeal ? '(成交价)' : ''}<span class="v ${pClass(profitPerUnit)}">${profitPerUnit >= 0 ? '+' : ''}${Math.round(profitPerUnit)}/件</span></div>
