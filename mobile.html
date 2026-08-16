@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0f13">
 <title>💰 买手利润换算器</title>
-<meta name="app-version" content="4">
+<meta name="app-version" content="5">
 <style>
   :root {
     --bg: #0f0f13;
@@ -330,8 +330,13 @@
     <p>多件叠加 · 自动算推荐价 / 粉丝价 / 利润 · 一键复制整单文案</p>
   </div>
 
-  <!-- Brand tabs -->
-  <div class="brand-tabs" id="brandTabs"></div>
+  <!-- Brand tabs（合并为通用模式：任何品牌自填折扣） -->
+  <div class="brand-tabs" id="brandTabs">
+    <div class="brand-tab active" onclick="selectBrand('custom')">
+      <div class="name">🏷 通用模式</div>
+      <div class="info">任意品牌 · 折扣自填（拿货 / 定价）</div>
+    </div>
+  </div>
 
   <!-- Items -->
   <div class="card">
@@ -441,15 +446,15 @@
 <div class="toast" id="toast">✅ 已复制到剪贴板</div>
 
 <script>
-// ---------- 品牌配置 ----------
+// ---------- 品牌配置（通用模式：折扣自填；SE/LAF 仅为快捷参考） ----------
 const BRANDS = {
-  SENSEAWEEK: { name: "SENSEAWEEK", costRate: 0.50, recRate: 0.68, info: "拿货5折 · 定价6.8折" },
-  LAFREEDOM:  { name: "LAFREEDOM",  costRate: 0.61, recRate: 0.75, info: "拿货6.1折 · 定价7.5折" }
+  SENSEAWEEK: { name: "SENSEAWEEK", costRate: 0.50, recRate: 0.68, info: "参考：拿货5折 · 定价6.8折" },
+  LAFREEDOM:  { name: "LAFREEDOM",  costRate: 0.61, recRate: 0.75, info: "参考：拿货6.1折 · 定价7.5折" }
 };
 const FEE_RATE = 0.016;   // 平台费 1.6%
 const MIN_PROFIT = 20;    // 保底利润 ¥20
 
-let selectedBrand = "LAFREEDOM";
+let selectedBrand = "custom";
 let shipMode = "per";     // per=每件单独运费 once=整单合并
 let feeEnabled = true;    // 平台费开关（走平台收 1.6%，私聊不走平台关掉）
 let itemCount = 0;
@@ -457,21 +462,37 @@ let itemCount = 0;
 // ---------- 元素 ----------
 const $ = id => document.getElementById(id);
 
-// ---------- 品牌 Tabs ----------
+// ---------- 品牌 Tabs（通用模式） ----------
 function renderBrandTabs() {
-  const tabs = Object.values(BRANDS).map(b => `
-    <div class="brand-tab ${selectedBrand === b.name ? 'active' : ''}" onclick="selectBrand('${b.name}')">
-      <div class="name">${b.name}</div>
-      <div class="info">${b.info}</div>
-    </div>`).join('');
+  const tabs = `
+    <div class="brand-tab active" onclick="selectBrand('custom')">
+      <div class="name">🏷 通用模式</div>
+      <div class="info">任意品牌 · 折扣自填（拿货 / 定价）</div>
+    </div>
+    <div class="brand-tab ${selectedBrand === 'SENSEAWEEK' ? 'active' : ''}" onclick="selectBrand('SENSEAWEEK')">
+      <div class="name">SENSEAWEEK</div>
+      <div class="info">参考：拿货5折 · 定价6.8折</div>
+    </div>
+    <div class="brand-tab ${selectedBrand === 'LAFREEDOM' ? 'active' : ''}" onclick="selectBrand('LAFREEDOM')">
+      <div class="name">LAFREEDOM</div>
+      <div class="info">参考：拿货6.1折 · 定价7.5折</div>
+    </div>`;
   $('brandTabs').innerHTML = tabs;
 }
 
 function selectBrand(name) {
   selectedBrand = name;
+  if (name === 'custom') {
+    // 通用模式：保留当前已填折扣，不动输入框
+    renderBrandTabs();
+    recalc();
+    return;
+  }
   const b = BRANDS[name];
-  $('costRateInput').value = (b.costRate * 10).toFixed(1).replace(/\.0$/, '');
-  $('recRateInput').value = (b.recRate * 10).toFixed(1).replace(/\.0$/, '');
+  if (b) {
+    $('costRateInput').value = (b.costRate * 10).toFixed(1).replace(/\.0$/, '');
+    $('recRateInput').value = (b.recRate * 10).toFixed(1).replace(/\.0$/, '');
+  }
   renderBrandTabs();
   recalc();
 }
@@ -591,7 +612,10 @@ function recalc() {
     const get = (field) => parseFloat(el.querySelector(`[data-field="${field}"]`).value) || 0;
     const retail = get('retail');
     const qty = Math.max(1, get('qty'));
-    const ship = shipMode === 'per' ? (get('ship') || shipDefault) : 0;
+    // 运费：per 模式 = 单件运费 × 件数；once 模式行内不扣（整单统一扣）
+    const ship = shipMode === 'per'
+      ? (get('ship') || shipDefault) * qty
+      : 0;
     const dealInput = el.querySelector('[data-field="deal"]');
 
     // 行内折扣：优先行内值，空/0 回退全局
@@ -610,6 +634,8 @@ function recalc() {
     const profitRec = dealPrice * qty - cost - ship - dealPrice * qty * feeRate;
     const profit90 = fan90 * qty - cost - ship - fan90 * qty * feeRate;
     const profit80 = fan80 * qty - cost - ship - fan80 * qty * feeRate;
+    // 单件利润（保底检查用）
+    const profitPerUnit = profitRec / qty;
 
     rows.push({
       name: el.querySelector('.item-name').value || `商品${idx + 1}`,
@@ -617,24 +643,25 @@ function recalc() {
       dealPrice, useDeal,
       ship, profitRec, profit90, profit80,
       cRate, rRate,
-      minProfitOk: profitRec >= MIN_PROFIT
+      minProfitOk: profitPerUnit >= MIN_PROFIT
     });
 
-    // 行结果
+    // 行结果（单价 + 件数标注 + 整件利润）
     const r = el.querySelector(`#${el.id}-result`);
     const pClass = p => p >= 20 ? 'profit-pos' : 'profit-neg';
-    const warn = profitRec < MIN_PROFIT ? `<span class="r"><span class="v warn">⚠️ 低于保底¥20</span></span>` : '';
+    const warn = profitPerUnit < MIN_PROFIT ? `<span class="r"><span class="v warn">⚠️ 单件低于保底¥20</span></span>` : '';
+    const qtyTag = qty > 1 ? `<small style="display:block;color:#55555f;font-size:10px">×${qty}件</small>` : '';
     r.innerHTML = `
-      <div class="r">推荐价<span class="v">¥${recommended}</span></div>
+      <div class="r">推荐价<span class="v">¥${recommended}</span>${qtyTag}</div>
       <div class="r">VIP价<span class="v">¥${fan90}</span></div>
       <div class="r">SVIP价<span class="v">¥${fan80}</span></div>
-      <div class="r">利润${useDeal ? '(成交价)' : ''}<span class="v ${pClass(profitRec)}">${profitRec >= 0 ? '+' : ''}${Math.round(profitRec)}</span></div>
+      <div class="r">${qty > 1 ? `利润(${qty}件)` : '利润'}${useDeal ? '(成交价)' : ''}<span class="v ${pClass(profitPerUnit)}">${profitPerUnit >= 0 ? '+' : ''}${Math.round(profitPerUnit)}/件</span></div>
       ${warn}
     `;
 
     // 行内折扣标记
     const d = el.querySelector(`#${el.id}-disc`);
-    d.innerHTML = `折扣：拿货 <b>${(cRate * 10).toFixed(1).replace(/\.0$/, '')}折</b> · 定价 <b>${(rRate * 10).toFixed(1).replace(/\.0$/, '')}折</b> · 成本 <b>¥${Math.round(cost)}</b>`;
+    d.innerHTML = `折扣：拿货 <b>${(cRate * 10).toFixed(1).replace(/\.0$/, '')}折</b> · 定价 <b>${(rRate * 10).toFixed(1).replace(/\.0$/, '')}折</b> · 成本 <b>¥${Math.round(cost)}</b>${qty > 1 ? `（${qty}件）` : ''}`;
   });
 
   // 汇总
@@ -676,19 +703,20 @@ function recalc() {
   $('sumVipProfit').innerHTML = fmtP(totalVipProfit, 'var(--yellow)');
   $('sumSvipProfit').innerHTML = fmtP(totalSvipProfit, 'var(--purple)');
 
-  // 汇总警告
+  // 汇总警告（保底按总件数 × 20）
+  const minTotal = MIN_PROFIT * totalQty;
   const alerts = [];
-  if (totalProfit < MIN_PROFIT * rows.length) {
-    alerts.push(`⚠️ 整单推荐价利润 ¥${Math.round(totalProfit)} 偏低：请调高定价折扣或收紧粉丝折率。`);
+  if (totalProfit < minTotal) {
+    alerts.push(`⚠️ 整单推荐价利润 ¥${Math.round(totalProfit)} 低于保底 ¥${minTotal}（${totalQty}件×¥20）：请调高定价折扣或收紧粉丝折率。`);
   }
-  if (totalVipProfit < MIN_PROFIT * rows.length) {
-    alerts.push(`⚠️ 整单 VIP 价利润 ¥${Math.round(totalVipProfit)} 低于保底 ¥${MIN_PROFIT * rows.length}！请收紧 VIP 折率。`);
+  if (totalVipProfit < minTotal) {
+    alerts.push(`⚠️ 整单 VIP 价利润 ¥${Math.round(totalVipProfit)} 低于保底 ¥${minTotal}！请收紧 VIP 折率。`);
   }
-  if (totalSvipProfit < MIN_PROFIT * rows.length) {
-    alerts.push(`⚠️ 整单 SVIP 价利润 ¥${Math.round(totalSvipProfit)} 低于保底 ¥${MIN_PROFIT * rows.length}！请收紧 SVIP 折率。`);
+  if (totalSvipProfit < minTotal) {
+    alerts.push(`⚠️ 整单 SVIP 价利润 ¥${Math.round(totalSvipProfit)} 低于保底 ¥${minTotal}！请收紧 SVIP 折率。`);
   }
   rows.filter(r => !r.minProfitOk).forEach(r => {
-    alerts.push(`⚠️ ${r.name}：利润 ¥${Math.round(r.profitRec)} 低于保底 ¥20！`);
+    alerts.push(`⚠️ ${r.name}：单件利润 ¥${Math.round(r.profitRec / r.qty)} 低于保底 ¥20！`);
   });
   $('summaryAlerts').innerHTML = alerts.map(a => `<div class="alert">${a}</div>`).join('');
 
@@ -795,7 +823,7 @@ function loadState() {
   try {
     const s = JSON.parse(safeGet(SAVE_KEY) || 'null');
     if (!s) return false;
-    selectedBrand = s.brand || 'LAFREEDOM';
+    selectedBrand = s.brand || 'custom';
     shipMode = s.shipMode || 'per';
     feeEnabled = s.feeEnabled !== undefined ? s.feeEnabled : true;
     $('feeToggle').classList.toggle('off', !feeEnabled);
