@@ -390,7 +390,7 @@
     <div class="card-title">📊 整单汇总（叠加）</div>
     <div class="summary" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 10px;">
       <div class="sum-box">
-        <div class="lbl">推荐总售价</div>
+        <div class="lbl">总售价</div>
         <div class="val accent" id="sumRec">¥0</div>
         <div class="sub" id="sumRecDetail"></div>
         <div class="sub" style="margin-top:2px"><span id="sumRecProfit" style="color:var(--green);font-weight:700">+¥0</span> <span style="color:#55555f">利润</span></div>
@@ -680,8 +680,10 @@ function recalc() {
   const margin = totalDeal > 0 ? (totalProfit / totalDeal * 100) : 0;
   const totalQty = rows.reduce((s, r) => s + r.qty, 0);
 
-  $('sumRec').textContent = fmtMoney(totalRec);
-  $('sumRecDetail').textContent = `${rows.length} 个商品 · ${totalQty} 件`;
+  // 总售价：成交价优先（填了实际售价就显示实际总价），没填的用推荐价
+  const hasDeal = rows.some(r => r.useDeal);
+  $('sumRec').textContent = fmtMoney(totalDeal);
+  $('sumRecDetail').textContent = `${rows.length} 个商品 · ${totalQty} 件${hasDeal ? ' · 含实际成交价' : ''}`;
   $('sumVip').textContent = fmtMoney(totalVip);
   $('sumVipDetail').textContent = `推荐 × ${vipRate}`;
   $('sumSvip').textContent = fmtMoney(totalSvip);
