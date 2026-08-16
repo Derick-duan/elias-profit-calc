@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💰 买手利润换算器（多件版）</title>
+<meta name="app-version" content="4">
+<style>
+  :root {
+    --bg: #0f0f13;
+    --card: #1a1a21;
+    --card2: #23232c;
+    --border: #2e2e3a;
+    --text: #f0f0f2;
+    --dim: #9a9aa8;
+    --accent: #ff6b35;
+    --accent2: #e85a2a;
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background:
+      radial-gradient(1000px 500px at 80% -10%, rgba(255,107,53,0.08), transparent 60%),
+      radial-gradient(800px 400px at 10% 110%, rgba(167,139,250,0.06), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 24px; }
+  .header h1 {
+    font-size: 26px; font-weight: 800; letter-spacing: 0.5px;
+    background: linear-gradient(90deg, #fff, #ffb08a);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header p { color: var(--dim); font-size: 13px; margin-top: 4px; }
+
+  /* Brand tabs */
+  .brand-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+  .brand-tab {
+    flex: 1; padding: 12px; border-radius: 12px; cursor: pointer;
+    background: var(--card2); border: 1px solid var(--border);
+    transition: all 0.15s; text-align: center;
+  }
+  .brand-tab.active {
+    background: #241510; border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent) inset;
+  }
+  .brand-tab .name { font-weight: 700; font-size: 15px; }
+  .brand-tab .info { color: var(--dim); font-size: 11px; margin-top: 2px; }
+
+  /* Card */
+  .card {
+    background: var(--card); border-radius: 16px; padding: 18px;
+    margin-bottom: 16px; border: 1px solid var(--border);
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #3a3a48; }
+  .card-title {
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 14px; font-weight: 600;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title .toolbar { display: flex; gap: 6px; }
+  .mini-btn {
+    background: var(--card2); border: 1px solid var(--border); color: var(--dim);
+    border-radius: 8px; padding: 4px 10px; font-size: 11px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mini-btn:hover { color: var(--text); border-color: var(--accent); }
+  .mini-btn.danger:hover { color: var(--red); border-color: var(--red); }
+
+  /* Summary sticky */
+  .summary-wrap {
+    position: sticky; top: 12px; z-index: 10;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px 18px; margin-bottom: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  }
+  .summary-wrap .card-title { margin-bottom: 12px; }
+
+  /* Items */
+  .item {
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px; margin-bottom: 12px;
+    position: relative; transition: border-color 0.2s, transform 0.15s;
+  }
+  .item:hover { border-color: #3d3d4d; }
+  .item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .item-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .item-name {
+    flex: 1; background: transparent; border: 1px solid var(--border);
+    color: var(--text); padding: 7px 10px; border-radius: 8px;
+    font-size: 13px; outline: none;
+  }
+  .item-name::placeholder { color: #55555f; }
+  .item-name:focus { border-color: var(--accent); }
+  .del-btn {
+    width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--red); font-size: 15px;
+    cursor: pointer; flex-shrink: 0; line-height: 1;
+  }
+  .del-btn:hover { background: rgba(248,113,113,0.12); border-color: var(--red); }
+
+  .item-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .field label { display: block; font-size: 11px; color: var(--dim); margin-bottom: 4px; }
+  .field input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 10px; border-radius: 8px;
+    font-size: 14px; font-weight: 600; outline: none;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field .unit { position: relative; }
+  .field .unit input { padding-right: 22px; }
+  .field .unit span {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    color: var(--dim); font-size: 11px; pointer-events: none;
+  }
+
+  .item-result {
+    margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border);
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    font-size: 12px; color: var(--dim);
+  }
+  .item-result .r { text-align: center; }
+  .item-result .r .v { display: block; font-size: 15px; font-weight: 700; color: var(--text); margin-top: 2px; }
+  .item-result .r .v.profit-pos { color: var(--green); }
+  .item-result .r .v.profit-neg { color: var(--red); }
+  .item-result .r .v.warn { color: var(--red); }
+
+  .item-disc-tag { margin-top: 8px; font-size: 11px; color: var(--dim); }
+
+  .row-copy-btn {
+    margin-top: 10px; padding: 7px 12px; border-radius: 8px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--dim); font-size: 11px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .row-copy-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(255,107,53,0.06); }
+
+  .add-btn {
+    width: 100%; padding: 11px; border-radius: 10px; cursor: pointer;
+    background: transparent; border: 1px dashed var(--border);
+    color: var(--dim); font-size: 13px; transition: all 0.15s;
+  }
+  .add-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(255,107,53,0.06); }
+
+  /* Shipping mode */
+  .ship-mode { display: flex; gap: 8px; margin-bottom: 14px; }
+  .ship-mode .opt {
+    flex: 1; padding: 9px; border-radius: 10px; cursor: pointer;
+    background: var(--card2); border: 1px solid var(--border);
+    font-size: 12px; color: var(--dim); text-align: center; transition: all 0.15s;
+  }
+  .ship-mode .opt.active { color: var(--text); border-color: var(--accent); background: #241510; }
+  .ship-mode .opt small { display: block; font-size: 10px; margin-top: 2px; }
+
+  /* 平台费开关 */
+  .fee-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; margin-top: 10px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .fee-row:hover { border-color: var(--accent); }
+  .fee-label { font-size: 13px; font-weight: 600; }
+  .fee-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  .toggle {
+    width: 44px; height: 26px; border-radius: 13px;
+    background: var(--accent); position: relative;
+    transition: background 0.2s; flex-shrink: 0;
+  }
+  .toggle .knob {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; position: absolute; top: 2px; left: 20px;
+    transition: left 0.2s;
+  }
+  .toggle.off { background: #3a3a48; }
+  .toggle.off .knob { left: 2px; }
+
+  /* Summary */
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .sum-box { background: var(--card2); border-radius: 12px; padding: 14px; text-align: center; }
+  .sum-box .lbl { font-size: 11px; color: var(--dim); }
+  .sum-box .val { font-size: 22px; font-weight: 800; margin-top: 4px; }
+  .sum-box .val.accent { color: var(--accent); }
+  .sum-box .val.green { color: var(--green); }
+  .sum-box .val.red { color: var(--red); }
+  .sum-box .sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+  /* Copy */
+  .copy-area {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; font-size: 13px; line-height: 1.7; color: #c8c8d0;
+    white-space: pre-wrap; min-height: 80px; max-height: 300px; overflow-y: auto;
+    font-family: "SF Mono", Menlo, monospace;
+  }
+  .copy-btn {
+    width: 100%; margin-top: 12px; padding: 14px; border: none; border-radius: 12px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .copy-btn:hover { opacity: 0.9; }
+  .copy-btn:active { transform: scale(0.99); }
+
+  /* Toast */
+  .toast {
+    position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%);
+    background: rgba(0,0,0,0.85); color: #fff; padding: 12px 24px;
+    border-radius: 10px; font-size: 14px; font-weight: 600;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Alerts */
+  .alert {
+    margin-top: 10px; padding: 10px 12px; border-radius: 8px;
+    background: rgba(255,107,53,0.12); color: var(--accent);
+    font-size: 12px; line-height: 1.5;
+  }
+
+  /* Footer hint */
+  .hint { text-align: center; color: #55555f; font-size: 11px; margin-top: 16px; }
+
+  @media (max-width: 640px) {
+    .item-grid { grid-template-columns: 1fr 1fr; }
+    .item-result { grid-template-columns: 1fr 1fr; }
+    .summary { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>💰 买手利润换算器</h1>
+    <p>多件叠加 · 自动算推荐价 / 粉丝价 / 利润 · 一键复制整单文案</p>
+  </div>
+
+  <!-- Brand tabs（合并为通用模式：任何品牌自填折扣） -->
+  <div class="brand-tabs" id="brandTabs">
+    <div class="brand-tab active" onclick="selectBrand('custom')">
+      <div class="name">🏷 通用模式</div>
+      <div class="info">任意品牌 · 折扣自填（拿货 / 定价）</div>
+    </div>
+  </div>
+
+  <!-- Items -->
+  <div class="card">
+    <div class="card-title">
+      📦 商品明细（每行一件，可添加 / 删除）
+      <span class="toolbar">
+        <button class="mini-btn" onclick="addItem()">＋ 添加</button>
+        <button class="mini-btn danger" onclick="clearAll()">🗑 清空</button>
+      </span>
+    </div>
+    <div id="items"></div>
+    <button class="add-btn" onclick="addItem()">＋ 添加商品（或按回车快速添加）</button>
+  </div>
+
+  <!-- Shipping mode + params -->
+  <div class="card">
+    <div class="card-title">🚚 运费与折扣参数</div>
+    <div class="ship-mode" id="shipMode">
+      <div class="opt active" data-mode="per" onclick="setShipMode('per')">每件单独运费<small>多件 = 18×件数</small></div>
+      <div class="opt" data-mode="once" onclick="setShipMode('once')">整单合并运费<small>多件合并一个包裹</small></div>
+    </div>
+    <div class="fee-row" id="feeRow" onclick="toggleFee()">
+      <div>
+        <div class="fee-label">平台费（走平台收 1.6%）</div>
+        <div class="fee-sub" id="feeSub">已开启 · 每笔按成交价 × 1.6% 扣</div>
+      </div>
+      <div class="toggle" id="feeToggle"><div class="knob"></div></div>
+    </div>
+    <div class="item-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+      <div class="field">
+        <label>运费（¥）</label>
+        <div class="unit"><input type="number" id="shippingInput" value="18" min="0" oninput="syncShipping()"><span>¥</span></div>
+      </div>
+      <div class="field">
+        <label>拿货折扣（折）</label>
+        <div class="unit"><input type="number" id="costRateInput" value="6.1" step="0.1" min="0" oninput="syncRates()"><span>折</span></div>
+      </div>
+      <div class="field">
+        <label>定价折扣（折）</label>
+        <div class="unit"><input type="number" id="recRateInput" value="7.5" step="0.1" min="0" oninput="syncRates()"><span>折</span></div>
+      </div>
+      <div class="field">
+        <label>VIP 折率</label>
+        <div class="unit"><input type="number" id="vipRateInput" value="0.9" step="0.05" min="0" oninput="recalc()"><span>×</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary (sticky) -->
+  <div class="summary-wrap">
+    <div class="card-title">📊 整单汇总（叠加）</div>
+    <div class="summary" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 10px;">
+      <div class="sum-box">
+        <div class="lbl">总售价</div>
+        <div class="val accent" id="sumRec">¥0</div>
+        <div class="sub" id="sumRecDetail"></div>
+        <div class="sub" style="margin-top:2px"><span id="sumRecProfit" style="color:var(--green);font-weight:700">+¥0</span> <span style="color:#55555f">利润</span></div>
+      </div>
+      <div class="sum-box">
+        <div class="lbl">VIP 总售价</div>
+        <div class="val" id="sumVip" style="color:var(--yellow)">¥0</div>
+        <div class="sub" id="sumVipDetail">推荐 × VIP折率</div>
+        <div class="sub" style="margin-top:2px"><span id="sumVipProfit" style="color:var(--yellow);font-weight:700">+¥0</span> <span style="color:#55555f">利润</span></div>
+      </div>
+      <div class="sum-box">
+        <div class="lbl">SVIP 总售价</div>
+        <div class="val" id="sumSvip" style="color:var(--purple)">¥0</div>
+        <div class="sub" id="sumSvipDetail">推荐 × 0.8</div>
+        <div class="sub" style="margin-top:2px"><span id="sumSvipProfit" style="color:var(--purple);font-weight:700">+¥0</span> <span style="color:#55555f">利润</span></div>
+      </div>
+    </div>
+    <div class="summary">
+      <div class="sum-box">
+        <div class="lbl">总利润（成交价）</div>
+        <div class="val green" id="sumProfit">¥0</div>
+        <div class="sub" id="sumProfitDetail"></div>
+      </div>
+      <div class="sum-box">
+        <div class="lbl">利润率</div>
+        <div class="val" id="sumMargin">0%</div>
+        <div class="sub">总成本 + 运费 + 平台费</div>
+      </div>
+      <div class="sum-box">
+        <div class="lbl">整单件数</div>
+        <div class="val" id="sumQty" style="font-size:18px">0 件</div>
+        <div class="sub">共 <span id="sumSkuCount">0</span> 个商品</div>
+      </div>
+    </div>
+    <div id="summaryAlerts"></div>
+  </div>
+
+  <!-- Copy -->
+  <div class="card">
+    <div class="card-title">
+      📋 整单报价文案
+      <span class="toolbar">
+        <button class="mini-btn" id="detailToggle" onclick="toggleDetail()">显示明细</button>
+      </span>
+    </div>
+    <div class="copy-area" id="copyArea"></div>
+    <button class="copy-btn" onclick="copyAll()">📋 一键复制整单文案</button>
+  </div>
+
+  <div class="hint">折扣均可修改，自动重算；单件利润低于 ¥20 标红提醒 · 输入自动保存，刷新不丢</div>
+</div>
+
+<div class="toast" id="toast">✅ 已复制到剪贴板</div>
+
+<script>
+// ---------- 品牌配置（通用模式：折扣自填；SE/LAF 仅为快捷参考） ----------
+const BRANDS = {
+  SENSEAWEEK: { name: "SENSEAWEEK", costRate: 0.50, recRate: 0.68, info: "参考：拿货5折 · 定价6.8折" },
+  LAFREEDOM:  { name: "LAFREEDOM",  costRate: 0.61, recRate: 0.75, info: "参考：拿货6.1折 · 定价7.5折" }
+};
+const FEE_RATE = 0.016;   // 平台费 1.6%
+const MIN_PROFIT = 20;    // 保底利润 ¥20
+
+let selectedBrand = "custom";
+let shipMode = "per";     // per=每件单独运费 once=整单合并
+let feeEnabled = true;    // 平台费开关（走平台收 1.6%，私聊不走平台关掉）
+let itemCount = 0;
+
+// ---------- 元素 ----------
+const $ = id => document.getElementById(id);
+
+// ---------- 品牌 Tabs（通用模式） ----------
+function renderBrandTabs() {
+  const tabs = `
+    <div class="brand-tab active" onclick="selectBrand('custom')">
+      <div class="name">🏷 通用模式</div>
+      <div class="info">任意品牌 · 折扣自填（拿货 / 定价）</div>
+    </div>
+    <div class="brand-tab ${selectedBrand === 'SENSEAWEEK' ? 'active' : ''}" onclick="selectBrand('SENSEAWEEK')">
+      <div class="name">SENSEAWEEK</div>
+      <div class="info">参考：拿货5折 · 定价6.8折</div>
+    </div>
+    <div class="brand-tab ${selectedBrand === 'LAFREEDOM' ? 'active' : ''}" onclick="selectBrand('LAFREEDOM')">
+      <div class="name">LAFREEDOM</div>
+      <div class="info">参考：拿货6.1折 · 定价7.5折</div>
+    </div>`;
+  $('brandTabs').innerHTML = tabs;
+}
+
+function selectBrand(name) {
+  selectedBrand = name;
+  if (name === 'custom') {
+    // 通用模式：保留当前已填折扣，不动输入框
+    renderBrandTabs();
+    recalc();
+    return;
+  }
+  const b = BRANDS[name];
+  if (b) {
+    $('costRateInput').value = (b.costRate * 10).toFixed(1).replace(/\.0$/, '');
+    $('recRateInput').value = (b.recRate * 10).toFixed(1).replace(/\.0$/, '');
+  }
+  renderBrandTabs();
+  recalc();
+}
+
+// ---------- 商品行 ----------
+function addItem(name = '', retail = '') {
+  itemCount++;
+  const id = `item-${itemCount}`;
+  const shipNow = $('shippingInput').value || '18';
+  const costNow = $('costRateInput').value || '6.1';
+  const recNow = $('recRateInput').value || '7.5';
+  const html = `
+  <div class="item" id="${id}">
+    <div class="item-head">
+      <div class="item-num">${itemCount}</div>
+      <input class="item-name" placeholder="品名（可选，如：气球牛仔裤）" value="${escapeHtml(name)}" oninput="recalc()">
+      <button class="del-btn" onclick="delItem('${id}')" title="删除">✕</button>
+    </div>
+    <div class="item-grid">
+      <div class="field">
+        <label>零售原价</label>
+        <div class="unit"><input type="number" placeholder="0" value="${retail}" min="0" oninput="recalc()" data-field="retail"><span>¥</span></div>
+      </div>
+      <div class="field">
+        <label>件数</label>
+        <div class="unit"><input type="number" value="1" min="1" oninput="recalc()" data-field="qty"><span>件</span></div>
+      </div>
+      <div class="field">
+        <label>运费（¥）</label>
+        <div class="unit"><input type="number" value="${shipNow}" min="0" oninput="recalc()" data-field="ship"><span>¥</span></div>
+      </div>
+      <div class="field">
+        <label>拿货折扣（折）</label>
+        <div class="unit"><input type="number" value="${costNow}" step="0.1" min="0" oninput="recalc()" data-field="costRate"><span>折</span></div>
+      </div>
+      <div class="field">
+        <label>定价折扣（折）</label>
+        <div class="unit"><input type="number" value="${recNow}" step="0.1" min="0" oninput="recalc()" data-field="recRate"><span>折</span></div>
+      </div>
+      <div class="field">
+        <label>实际成交价（可改）</label>
+        <div class="unit"><input type="number" placeholder="自动=推荐价" min="0" oninput="recalc()" data-field="deal"><span>¥</span></div>
+      </div>
+    </div>
+    <div class="item-result" id="${id}-result"></div>
+    <div class="item-disc-tag" id="${id}-disc"></div>
+    <button class="row-copy-btn" onclick="copyRow('${id}')">📋 复制本件报价</button>
+  </div>`;
+  $('items').insertAdjacentHTML('beforeend', html);
+  recalc();
+}
+
+function delItem(id) {
+  document.getElementById(id).remove();
+  // 重新编号
+  [...document.querySelectorAll('.item')].forEach((el, i) => {
+    el.querySelector('.item-num').textContent = i + 1;
+  });
+  recalc();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ---------- 运费模式 ----------
+function setShipMode(mode) {
+  shipMode = mode;
+  document.querySelectorAll('#shipMode .opt').forEach(el => {
+    el.classList.toggle('active', el.dataset.mode === mode);
+  });
+  recalc();
+}
+
+// 全局运费修改 → 同步所有行
+function syncShipping() {
+  const v = $('shippingInput').value;
+  document.querySelectorAll('[data-field="ship"]').forEach(el => {
+    el.value = v;
+  });
+  recalc();
+}
+
+// 全局折扣修改 → 同步所有行（行内可再单独改）
+function syncRates() {
+  const c = $('costRateInput').value;
+  const r = $('recRateInput').value;
+  document.querySelectorAll('[data-field="costRate"]').forEach(el => { el.value = c; });
+  document.querySelectorAll('[data-field="recRate"]').forEach(el => { el.value = r; });
+  recalc();
+}
+
+// 平台费开关
+function toggleFee() {
+  feeEnabled = !feeEnabled;
+  const t = $('feeToggle');
+  t.classList.toggle('off', !feeEnabled);
+  $('feeSub').textContent = feeEnabled
+    ? '已开启 · 每笔按成交价 × 1.6% 扣'
+    : '已关闭 · 不走平台，无平台费';
+  recalc();
+}
+
+// ---------- 计算 ----------
+function recalc() {
+  const costRate = (parseFloat($('costRateInput').value) || 0) / 10;
+  const recRate = (parseFloat($('recRateInput').value) || 0) / 10;
+  const vipRate = parseFloat($('vipRateInput').value) || 0.9;
+  const svipRate = 0.8;
+  const shipDefault = parseFloat($('shippingInput').value) || 0;
+  const feeRate = feeEnabled ? FEE_RATE : 0;   // 平台费开关
+
+  const items = [...document.querySelectorAll('.item')];
+  const rows = [];
+
+  items.forEach((el, idx) => {
+    const get = (field) => parseFloat(el.querySelector(`[data-field="${field}"]`).value) || 0;
+    const retail = get('retail');
+    const qty = Math.max(1, get('qty'));
+    // 运费：per 模式 = 单件运费 × 件数；once 模式行内不扣（整单统一扣）
+    const ship = shipMode === 'per'
+      ? (get('ship') || shipDefault) * qty
+      : 0;
+    const dealInput = el.querySelector('[data-field="deal"]');
+
+    // 行内折扣：优先行内值，空/0 回退全局
+    const rowCostRate = parseFloat(el.querySelector('[data-field="costRate"]').value) || 0;
+    const rowRecRate = parseFloat(el.querySelector('[data-field="recRate"]').value) || 0;
+    const cRate = rowCostRate > 0 ? rowCostRate / 10 : costRate;
+    const rRate = rowRecRate > 0 ? rowRecRate / 10 : recRate;
+
+    const cost = retail * cRate * qty;
+    const recommended = Math.round(retail * rRate);   // 单件推荐价
+    const useDeal = dealInput.value !== '';
+    const dealPrice = useDeal ? (parseFloat(dealInput.value) || 0) : recommended;
+    // VIP/SVIP：基于实际成交价（没填成交价时=推荐价），与总售价口径一致
+    const fan90 = Math.round(dealPrice * vipRate);
+    const fan80 = Math.round(dealPrice * 0.8);
+
+    const profitRec = dealPrice * qty - cost - ship - dealPrice * qty * feeRate;
+    const profit90 = fan90 * qty - cost - ship - fan90 * qty * feeRate;
+    const profit80 = fan80 * qty - cost - ship - fan80 * qty * feeRate;
+    // 单件利润（保底检查用）
+    const profitPerUnit = profitRec / qty;
+
+    rows.push({
+      name: el.querySelector('.item-name').value || `商品${idx + 1}`,
+      retail, qty, cost, recommended, fan90, fan80,
+      dealPrice, useDeal,
+      ship, profitRec, profit90, profit80,
+      cRate, rRate,
+      minProfitOk: profitPerUnit >= MIN_PROFIT
+    });
+
+    // 行结果（售价 = 成交价优先，没填用推荐价；件数标注 + 单件利润）
+    const r = el.querySelector(`#${el.id}-result`);
+    const pClass = p => p >= 20 ? 'profit-pos' : 'profit-neg';
+    const warn = profitPerUnit < MIN_PROFIT ? `<span class="r"><span class="v warn">⚠️ 单件低于保底¥20</span></span>` : '';
+    const qtyTag = qty > 1 ? `<small style="display:block;color:#55555f;font-size:10px">×${qty}件</small>` : '';
+    r.innerHTML = `
+      <div class="r">售价<span class="v">¥${dealPrice}</span>${qtyTag}</div>
+      <div class="r">VIP价<span class="v">¥${fan90}</span></div>
+      <div class="r">SVIP价<span class="v">¥${fan80}</span></div>
+      <div class="r">${qty > 1 ? `利润(${qty}件)` : '利润'}${useDeal ? '(成交价)' : ''}<span class="v ${pClass(profitPerUnit)}">${profitPerUnit >= 0 ? '+' : ''}${Math.round(profitPerUnit)}/件</span></div>
+      ${warn}
+    `;
+
+    // 行内折扣标记
+    const d = el.querySelector(`#${el.id}-disc`);
+    d.innerHTML = `折扣：拿货 <b>${(cRate * 10).toFixed(1).replace(/\.0$/, '')}折</b> · 定价 <b>${(rRate * 10).toFixed(1).replace(/\.0$/, '')}折</b> · 成本 <b>¥${Math.round(cost)}</b>${qty > 1 ? `（${qty}件）` : ''}`;
+  });
+
+  // 汇总
+  const totalRec = rows.reduce((s, r) => s + r.recommended * r.qty, 0);
+  const totalCost = rows.reduce((s, r) => s + r.cost, 0);
+  const totalShip = shipMode === 'once'
+    ? shipDefault
+    : rows.reduce((s, r) => s + r.ship, 0);
+  const totalDeal = rows.reduce((s, r) => s + r.dealPrice * r.qty, 0);
+  // VIP/SVIP 总售价 = 总售价 × 折率（与用户预期口径一致：510×0.9=459）
+  const totalVip = Math.round(totalDeal * vipRate);
+  const totalSvip = Math.round(totalDeal * 0.8);
+  const totalFee = totalDeal * feeRate;
+  const totalProfit = totalDeal - totalCost - totalShip - totalFee;
+  const totalVipProfit = totalVip - totalCost - totalShip - totalVip * feeRate;
+  const totalSvipProfit = totalSvip - totalCost - totalShip - totalSvip * feeRate;
+  const margin = totalDeal > 0 ? (totalProfit / totalDeal * 100) : 0;
+  const totalQty = rows.reduce((s, r) => s + r.qty, 0);
+
+  // 总售价：成交价优先（填了实际售价就显示实际总价），没填的用推荐价
+  const hasDeal = rows.some(r => r.useDeal);
+  $('sumRec').textContent = fmtMoney(totalDeal);
+  $('sumRecDetail').textContent = `${rows.length} 个商品 · ${totalQty} 件${hasDeal ? ' · 含实际成交价' : ''}`;
+  $('sumVip').textContent = fmtMoney(totalVip);
+  $('sumVipDetail').textContent = `推荐 × ${vipRate}`;
+  $('sumSvip').textContent = fmtMoney(totalSvip);
+  $('sumQty').textContent = `${totalQty} 件`;
+  $('sumSkuCount').textContent = rows.length;
+  $('sumProfit').textContent = fmtMoney(totalProfit);
+  $('sumProfitDetail').textContent = feeEnabled
+    ? `成交 ${fmtMoney(totalDeal)} - 成本 ${fmtMoney(totalCost)} - 运费 ${fmtMoney(totalShip)} - 平台费 ¥${totalFee.toFixed(1)}`
+    : `成交 ${fmtMoney(totalDeal)} - 成本 ${fmtMoney(totalCost)} - 运费 ${fmtMoney(totalShip)}（免平台费）`;
+  $('sumProfit').className = 'val num ' + (totalProfit >= 20 ? 'green' : 'red');
+  $('sumMargin').textContent = margin.toFixed(1) + '%';
+
+  // 三档利润
+  const fmtP = (p, cls) => {
+    const color = p >= 20 ? cls : 'var(--red)';
+    return `<span style="color:${color};font-weight:700">${p >= 0 ? '+' : ''}${fmtMoney(p)}</span>`;
+  };
+  $('sumRecProfit').innerHTML = fmtP(totalProfit, 'var(--green)');
+  $('sumVipProfit').innerHTML = fmtP(totalVipProfit, 'var(--yellow)');
+  $('sumSvipProfit').innerHTML = fmtP(totalSvipProfit, 'var(--purple)');
+
+  // 汇总警告（保底按总件数 × 20）
+  const minTotal = MIN_PROFIT * totalQty;
+  const alerts = [];
+  if (totalProfit < minTotal) {
+    alerts.push(`⚠️ 整单推荐价利润 ¥${Math.round(totalProfit)} 低于保底 ¥${minTotal}（${totalQty}件×¥20）：请调高定价折扣或收紧粉丝折率。`);
+  }
+  if (totalVipProfit < minTotal) {
+    alerts.push(`⚠️ 整单 VIP 价利润 ¥${Math.round(totalVipProfit)} 低于保底 ¥${minTotal}！请收紧 VIP 折率。`);
+  }
+  if (totalSvipProfit < minTotal) {
+    alerts.push(`⚠️ 整单 SVIP 价利润 ¥${Math.round(totalSvipProfit)} 低于保底 ¥${minTotal}！请收紧 SVIP 折率。`);
+  }
+  rows.filter(r => !r.minProfitOk).forEach(r => {
+    alerts.push(`⚠️ ${r.name}：单件利润 ¥${Math.round(r.profitRec / r.qty)} 低于保底 ¥20！`);
+  });
+  $('summaryAlerts').innerHTML = alerts.map(a => `<div class="alert">${a}</div>`).join('');
+
+  // 文案
+  renderCopy(rows, totalDeal, totalProfit, totalShip);
+  saveState();
+}
+
+// ---------- 工具 ----------
+function fmtMoney(n) {
+  return '¥' + Math.round(n).toLocaleString('zh-CN');
+}
+
+// ---------- 文案 ----------
+let showDetail = false;
+
+function toggleDetail() {
+  showDetail = !showDetail;
+  $('detailToggle').textContent = showDetail ? '隐藏明细' : '显示明细';
+  recalc();
+}
+
+function renderCopy(rows, totalDeal, totalProfit, totalShip) {
+  const lines = [];
+  lines.push(`${fmtMoney(totalDeal)} 具体带图询价宝宝们`);
+  lines.push('');
+  if (rows.length > 0 && showDetail) {
+    lines.push(`本次${rows.reduce((s,r)=>s+r.qty,0)}件：`);
+    rows.forEach(r => {
+      lines.push(`  ${r.name} ×${r.qty}（${fmtMoney(r.dealPrice)}）`);
+    });
+    lines.push('');
+  }
+  lines.push('感恩茫茫人海我们能够相遇❤️');
+  lines.push('');
+  lines.push('【店铺代购需知】');
+  lines.push('商品正品保证！全新发货！');
+  lines.push('商品默认顺丰陆运。');
+  lines.push('下单后不可撤单。');
+  lines.push('拍下即默认所有交易规则。');
+  lines.push('✅解锁更多特价福利：_EliasAsher');
+  lines.push('');
+  lines.push('设计师品牌的特殊性,售出不退不换,质量问题可申请售后');
+  lines.push('我们的价格不一定是最低,但是我们的服务靠谱,值得你信赖！');
+  $('copyArea').textContent = lines.join('\n');
+}
+
+// 复制单件报价
+async function copyRow(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const get = (field) => parseFloat(el.querySelector(`[data-field="${field}"]`).value) || 0;
+  const name = el.querySelector('.item-name').value || '商品';
+  const retail = get('retail');
+  const qty = Math.max(1, get('qty'));
+  const deal = el.querySelector('[data-field="deal"]').value !== ''
+    ? get('deal')
+    : Math.round(retail * (parseFloat(el.querySelector('[data-field="recRate"]').value) || parseFloat($('recRateInput').value) || 7.5) / 10);
+  const text = `${name} ×${qty}：${fmtMoney(deal)}，全新正品带吊牌，顺丰包邮，带图可私聊更实在价～`;
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+  showToast(`✅ 已复制：${name}`);
+}
+
+// 清空所有商品行
+function clearAll() {
+  if (!confirm('确定清空所有商品？')) return;
+  document.getElementById('items').innerHTML = '';
+  itemCount = 0;
+  addItem();
+  addItem();
+}
+
+// ---------- 自动保存 / 恢复 ----------
+const SAVE_KEY = 'elias_profit_calc_v1';
+let isLoading = false;
+
+function saveState() {
+  if (isLoading) return;
+  const state = {
+    brand: selectedBrand,
+    shipMode,
+    feeEnabled,
+    ship: $('shippingInput').value,
+    cost: $('costRateInput').value,
+    rec: $('recRateInput').value,
+    vip: $('vipRateInput').value,
+    detail: showDetail,
+    items: [...document.querySelectorAll('.item')].map(el => ({
+      name: el.querySelector('.item-name').value,
+      fields: Object.fromEntries(
+        [...el.querySelectorAll('[data-field]')].map(i => [i.dataset.field, i.value])
+      )
+    }))
+  };
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+function loadState() {
+  isLoading = true;
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (!s) return false;
+    selectedBrand = s.brand || 'custom';
+    shipMode = s.shipMode || 'per';
+    feeEnabled = s.feeEnabled !== undefined ? s.feeEnabled : true;
+    $('feeToggle').classList.toggle('off', !feeEnabled);
+    $('feeSub').textContent = feeEnabled
+      ? '已开启 · 每笔按成交价 × 1.6% 扣'
+      : '已关闭 · 不走平台，无平台费';
+    $('shippingInput').value = s.ship ?? '18';
+    $('costRateInput').value = s.cost ?? '6.1';
+    $('recRateInput').value = s.rec ?? '7.5';
+    $('vipRateInput').value = s.vip ?? '0.9';
+    showDetail = !!s.detail;
+    setShipMode(shipMode);
+    document.querySelectorAll('#shipMode .opt').forEach(el => {
+      el.classList.toggle('active', el.dataset.mode === shipMode);
+    });
+    $('detailToggle').textContent = showDetail ? '隐藏明细' : '显示明细';
+    if (s.items && s.items.length) {
+      itemCount = 0;
+      document.getElementById('items').innerHTML = '';
+      s.items.forEach(it => {
+        const shipNow = it.fields.ship || $('shippingInput').value;
+        const costNow = it.fields.costRate || $('costRateInput').value;
+        const recNow = it.fields.recRate || $('recRateInput').value;
+        addItem(it.name || '', it.fields.retail || '');
+        const last = [...document.querySelectorAll('.item')].pop();
+        ['qty','ship','costRate','recRate','deal'].forEach(f => {
+          const inp = last.querySelector(`[data-field="${f}"]`);
+          if (inp && it.fields[f] !== undefined) inp.value = it.fields[f];
+        });
+      });
+    }
+    isLoading = false;
+    recalc();
+    return true;
+  } catch (e) { isLoading = false; return false; }
+}
+
+// ---------- 复制 ----------
+async function copyAll() {
+  const text = $('copyArea').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    // 降级：textarea 选中复制
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+  showToast('✅ 已复制到剪贴板');
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+// 回车快速添加商品
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') {
+    e.preventDefault();
+    addItem();
+    const last = [...document.querySelectorAll('.item')].pop();
+    if (last) last.querySelector('[data-field="retail"]').focus();
+  }
+});
+
+// ---------- 初始化 ----------
+renderBrandTabs();
+if (!loadState()) {
+  addItem();
+  addItem();
+}
+recalc();
+</script>
+</body>
+</html>
